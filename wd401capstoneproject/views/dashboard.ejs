@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>News Webapp</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+    }
+
+    h1 {
+      text-align: center;
+      background-color: #333;
+      color: white;
+      padding: 10px 0;
+    }
+
+    ul {
+      list-style: none;
+      padding: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+
+    li {
+      width: 23%;
+      background-color: #fff;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+      margin-bottom: 20px;
+      transition: transform 0.2s;
+    }
+
+    li:hover {
+      transform: scale(1.02);
+    }
+
+    h2 {
+      font-size: 18px;
+      margin: 0;
+      padding: 10px;
+    }
+
+    p {
+      font-size: 14px;
+      margin: 0;
+      padding: 10px;
+      color: #333;
+    }
+
+    a {
+      text-decoration: none;
+      color: #333;
+    }
+
+    
+    li:nth-child(odd) img {
+  
+      width: 100%; 
+      height: auto; 
+    }
+
+    li:nth-child(even) img {
+      
+      width: 100%; 
+      height: auto; 
+    }
+
+    @media (max-width: 768px) {
+      li {
+        width: 48%;
+      }
+    }
+
+    @media (max-width: 480px) {
+      li {
+        width: 100%;
+      }
+    }
+        
+        body, h1, p {
+            margin: 0;
+            padding: 0;
+        }
+
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #ffffff;
+            margin: 0;
+        }
+
+        
+        .navbar {
+            background-color: #000000;
+            overflow: hidden;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 20px;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            margin: 0 20px;
+            font-size: 18px;
+            transition: color 0.3s;
+        }
+
+        .navbar a:hover {
+            color: #ddd;
+        }
+
+        
+        .login-signup {
+            margin-right: 20px;
+        }
+
+        .login-signup button {
+            padding: 10px 20px;
+            background-color: #333;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .login-signup button:hover {
+            background-color: #555;
+        }
+
+        
+        .buttons {
+            text-align: center;
+        }
+
+        .buttons a {
+            display: inline-block;
+            padding: 10px 20px;
+            color: white;
+            text-decoration: none;
+            margin: 10px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .buttons button:hover {
+            background-color: #555;
+        }
+
+        
+        .image-section {
+            background-image: url('https://www.way2news.com/images/flip-bg.png'); 
+            background-size: cover;
+            background-position: center;
+            height: calc(100vh - 70px); 
+        }
+        
+        
+        @media screen and (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .navbar a {
+                margin: 10px 20px;
+            }
+
+            .login-signup {
+                margin: 20px 0;
+                text-align: center;
+            }
+
+            .buttons {
+                text-align: center;
+            }
+            
+        }
+    </style>
+  </style>
+</head>
+<body>
+  <div class="navbar">
+      <div class="logo">
+          <a href="home.html" style="font-size: 25px;">𝓔𝔁𝓹𝓻𝓮𝓼𝓼 𝓷𝓮𝔀𝓼</a>
+      </div>
+      <div class="buttons">
+          <a href="#">Home</a>
+          <a href="#">News</a>
+          <a href="#">Careers</a>
+          <a href="#">Contact us</a>
+          <a href="#">Features</a>
+          <a href="#">Blogs</a>
+          <a href="#">Events</a>
+      </div>
+      <div class="login-signup">
+        <button class="login-button" id="loginButton">Logout</button>
+      </div>
+  </div>
+  <h1>Latest news</h1>
+
+  <ul>
+    <% for (const article of articles) { %>
+      <li>
+        <img src="<%= article.urlToImage %>" alt="<%= article.title %>">
+        <h2><a href="<%= article.url %>"><%= article.title %></a></h2>
+        <p><%= article.description %></p>
+      </li>
+    <% } %>
+  </ul>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+            const loginButton = document.getElementById('loginButton');
+
+            loginButton.addEventListener('click', () => {
+                window.location.href = '/home';
+            });
+        });
+</script>
+</body>
+</html>
