@@ -1,0 +1,205 @@
+// Importing necessary modules and setting up the application
+const express = require('express'); // Importing the Express framework
+const app = express(); // Creating an instance of Express
+const admin = require('firebase-admin'); // Importing the Firebase Admin SDK
+const serviceAccount = require("./key.json"); // Loading Firebase service account credentials
+const bcrypt = require('bcrypt'); // Importing the bcrypt library for password hashing
+const multer = require('multer');
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+const session = require('express-session');
+const crypto = require('crypto');
+
+const Secret = crypto.randomBytes(64).toString('hex');
+
+
+app.use(session({
+    secret: Secret,
+    resave: false,
+    saveUninitialized: true
+}));
+
+// Serving static files from the 'public' directory
+app.use(express.static('public'));
+
+// Setting the view engine to EJS (Embedded JavaScript templates)
+app.set('view engine', 'ejs');
+
+// Initializing Firebase Admin SDK with provided credentials
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: "gs://foundify-5a876.appspot.com",
+    ignoreUndefinedProperties: true
+
+});
+
+const bucket = admin.storage().bucket();
+
+// Parsing incoming request bodies (for form data)
+app.use(express.urlencoded({ extended: true }));
+
+// Function to check if a user with a given email already exists
+async function userExists(email) {
+    const usersRef = admin.firestore().collection("appusers"); // Getting a reference to the 'appusers' collection
+    const snapshot = await usersRef.where("Email", "==", email).get(); // Querying for users with the provided email
+    return !snapshot.empty; // Returning true if there are any matching users (i.e., user already exists)
+}
+
+// Handling GET request for the signup page
+app.get('/signup_page', function (req, res) {
+    res.render('signup_page', { message: null }); // Rendering the 'signup_page' template with a null message
+});
+
+// Handling POST request for signup
+app.post('/submit_signup', async function (req, res) {
+    const { name, email, password } = req.body;
+
+    try {
+        const exists = await userExists(email);
+
+        if (exists) {
+            return res.render('signup_page', { message: "User already exists. Please login." });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const userData = {
+            FullName: name,
+            Email: email,
+            Password: hashedPassword,
+        };
+
+        // Remove undefined properties
+        Object.keys(userData).forEach(key => userData[key] === undefined && delete userData[key]);
+
+        await admin.firestore().collection("appusers").add(userData);
+
+        return res.redirect('/login_page');
+    } catch (error) {
+        return res.send("Error: " + error.message);
+    }
+});
+
+
+// Handling GET request for the login page
+app.get('/login_page', function (req, res) {
+    res.render('login_page', { message: null }); // Rendering the 'login_page' template with a null message
+});
+
+// Handling POST request when user submits login form
+app.post('/submit_login', async function (req, res) {
+    const { email, password } = req.body;
+
+    // Check if email and password are provided
+    if (!email || !password) {
+        return res.render('login_page', { message: "Please provide both email and password." });
+    }
+
+
+    try {
+        const snapshot = await admin.firestore().collection("appusers")
+            .where("Email", "==", email)
+            .get();
+
+        if (snapshot.size === 0) {
+            return res.render('login_page', { message: "Invalid credentials." });
+        } else {
+            const user = snapshot.docs[0].data();
+            const passwordMatch = await bcrypt.compare(password, user.Password);
+
+            if (passwordMatch) {
+                req.session.userId = snapshot.docs[0].id;
+                return res.redirect('/dashboard');
+            } else {
+                return res.render('login_page', { message: "Invalid credentials." });
+            }
+        }
+    } catch (error) {
+        return res.send("Error: " + error.message);
+    }
+});
+
+// Handling GET request for the home page
+app.get('/', function (req, res) {
+    res.render('home'); // Rendering the 'home' template
+});
+
+
+
+app.post('/api/posts', upload.single('image'), async (req, res) => {
+    try {
+        // Retrieve userId from the session or your user authentication mechanism
+        const userId = req.session.userId;  // Assuming you have session-based authentication
+        if (!userId) {
+            return res.status(401).send('User not authenticated');
+        }
+
+        const postData = {
+            content: req.body.content,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            userId: userId
+        };
+
+        //... [rest of your code for saving the post]
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ success: false });
+    }
+});
+// Handling GET request for the dashboard page
+app.get('/dashboard', async function (req, res) {
+    try {
+        const postsSnapshot = await admin.firestore().collection('posts').orderBy('timestamp', 'desc').limit(10).get(); 
+
+        let posts = [];
+        let userIds = new Set();
+
+        postsSnapshot.forEach(doc => {
+            const postData = doc.data();
+            posts.push(postData);
+            if (postData.userId) {
+                userIds.add(postData.userId);
+            }
+        });
+
+        userIds = [...userIds].filter(id => id); // Filter out any undefined or null values
+        
+        if (!userIds.length) {
+            return res.render('dashboard', { message: "No posts available.", posts: [] });
+        }
+
+        const usersRef = admin.firestore().collection('appusers');
+        const usersSnapshot = await usersRef.where(admin.firestore.FieldPath.documentId(), 'in', userIds).get();
+
+        let userMap = {};
+        usersSnapshot.forEach(doc => {
+            const userData = doc.data();
+            userMap[doc.id] = userData;
+        });
+
+        posts = posts.map(post => {
+            const user = userMap[post.userId] || {};
+            return {
+                ...post,
+                username: user.FullName,
+                userImageURL: user.ImageURL // adjust this based on your user schema
+            };
+        });
+
+        res.render('dashboard', { message: null, posts: posts });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to retrieve posts.');
+    }
+});
+
+app.get('/post', (req, res) => {
+    res.render('post');
+});
+
+// Setting up the server to listen on a specified port
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
+
